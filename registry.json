@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "skills": [
+    {
+      "skill_id": "echo_message",
+      "name": "Echo Message",
+      "description": "Returns the provided message as-is. Serves as an example/template skill for the registry.",
+      "parameters_schema": "{\"type\": \"object\", \"properties\": {\"message\": {\"type\": \"string\", \"description\": \"Message to echo back.\"}}}",
+      "entry_point_function": "run",
+      "required_role": "observer",
+      "trigger_type": "manual",
+      "trigger_config": "{}",
+      "file": "skills/echo_message.py",
+      "test_file": "skills/test_echo_message.py"
+    }
+  ]
+}

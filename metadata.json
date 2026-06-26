@@ -1,0 +1,5 @@
+{
+  "name": "janus-skills-library",
+  "version": "1.0.0",
+  "description": "Community skill registry for Project Janus / Positronic Membrane — verified skills compiled into agent_skills via the staging harness"
+}
