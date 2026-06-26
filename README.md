@@ -1,2 +1,2 @@
 # janus-skills-library
-Skill library for Postrionic Membrane
+Skill library for Positronic Membrane
