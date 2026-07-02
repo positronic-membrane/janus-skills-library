@@ -77,6 +77,22 @@ def test_create_pr():
     assert result["number"] == 11
 
 
+def test_create_repo_private_by_default():
+    mod = _load_skill()
+    mod.sdk["github"].create_repo.return_value = {"full_name": "org/new-repo"}
+    result = mod.run(action="create_repo", name="new-repo")
+    mod.sdk["github"].create_repo.assert_called_once_with("new-repo", "", True)
+    assert result["full_name"] == "org/new-repo"
+
+
+def test_create_repo_explicit_public():
+    mod = _load_skill()
+    mod.sdk["github"].create_repo.return_value = {"full_name": "org/new-repo"}
+    result = mod.run(action="create_repo", name="new-repo", description="d", private=False)
+    mod.sdk["github"].create_repo.assert_called_once_with("new-repo", "d", False)
+    assert result["full_name"] == "org/new-repo"
+
+
 def test_unknown_action_returns_error():
     mod = _load_skill()
     result = mod.run(action="invalid_action", repo="owner/repo")
