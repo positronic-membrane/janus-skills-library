@@ -13,6 +13,8 @@ def _make_sdk():
     mock_gh.add_comment.return_value = {"id": 99}
     mock_gh.close_issue.return_value = {"state": "closed"}
     mock_gh.create_pr.return_value = {"number": 11}
+    mock_gh.update_issue.return_value = {"number": 8, "title": "Updated"}
+    mock_gh.create_label.return_value = {"name": "triage"}
     return {
         "github": mock_gh,
         "logger": logging.getLogger("test"),
@@ -68,6 +70,38 @@ def test_close_issue():
     result = mod.run(action="close_issue", repo="owner/repo", number=31)
     mod.sdk["github"].close_issue.assert_called_once_with("owner/repo", 31)
     assert result["state"] == "closed"
+
+
+def test_update_issue():
+    mod = _load_skill()
+    result = mod.run(action="update_issue", repo="owner/repo", number=8, title="Updated", labels=["bug"])
+    mod.sdk["github"].update_issue.assert_called_once_with(
+        "owner/repo", 8, title="Updated", body=None, labels=["bug"], state=None
+    )
+    assert result["number"] == 8
+
+
+def test_update_issue_state_only():
+    mod = _load_skill()
+    mod.run(action="update_issue", repo="owner/repo", number=8, state="closed")
+    mod.sdk["github"].update_issue.assert_called_once_with(
+        "owner/repo", 8, title=None, body=None, labels=None, state="closed"
+    )
+
+
+def test_create_label():
+    mod = _load_skill()
+    result = mod.run(
+        action="create_label", repo="owner/repo", name="triage", color="ff0000", description="d"
+    )
+    mod.sdk["github"].create_label.assert_called_once_with("owner/repo", "triage", "ff0000", "d")
+    assert result["name"] == "triage"
+
+
+def test_create_label_defaults():
+    mod = _load_skill()
+    mod.run(action="create_label", repo="owner/repo", name="triage")
+    mod.sdk["github"].create_label.assert_called_once_with("owner/repo", "triage", "ededed", "")
 
 
 def test_create_pr():
