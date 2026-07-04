@@ -27,6 +27,28 @@ def run_reflection_cycle():
             except Exception as e:
                 sdk['logger'].error(f"Failed to query semantic memories: {e}")
 
+        goals_block = "ACTIVE GOALS & CHECKPOINTS:\nNo active goals or checkpoints."
+        try:
+            active_goals = sdk['db'].query("SELECT id, type, status, description FROM goals WHERE status IN ('active', 'in_progress');")
+            if active_goals:
+                lines = ["ACTIVE GOALS & CHECKPOINTS:"]
+                for g in active_goals:
+                    gid = g.get('id') if isinstance(g, dict) else g[0]
+                    gtype = g.get('type') if isinstance(g, dict) else g[1]
+                    gstatus = g.get('status') if isinstance(g, dict) else g[2]
+                    gdesc = g.get('description') if isinstance(g, dict) else g[3]
+                    lines.append(f"- Goal [ID: {gid}] ({gtype}): {gdesc} (Status: {gstatus})")
+                    cps = sdk['db'].query("SELECT id, checkpoint_description, achieved FROM goal_checkpoints WHERE goal_id = ?;", (gid,))
+                    if cps:
+                        for cp in cps:
+                            cpdesc = cp.get('checkpoint_description') if isinstance(cp, dict) else cp[1]
+                            cpach = cp.get('achieved') if isinstance(cp, dict) else cp[2]
+                            marker = "[x]" if cpach else "[ ]"
+                            lines.append(f"  - {marker} {cpdesc}")
+                goals_block = "\n".join(lines)
+        except Exception as ge:
+            sdk['logger'].error(f"Failed to query goals in reflection cycle: {ge}")
+
         bus_turns = 0
         max_bus_turns = 3
         pending_bus_context = ""
@@ -47,6 +69,9 @@ def run_reflection_cycle():
             RELEVANT HISTORICAL SEMANTIC MEMORIES:
             {semantic_context if semantic_context else "None available."}
             
+            ACTIVE GOALS & CHECKPOINTS:
+            {goals_block}
+            
             SWARM CHAT HISTORY (THIS TICK):
             {pending_bus_context if pending_bus_context else "No active sub-task discussions."}
             
@@ -62,13 +87,19 @@ def run_reflection_cycle():
             - scan_workspace
             - spawn_agent: <agent_id> | <agent_name> | <system_prompt>
             - execute_code: <python_code>
-            - modify_code: <relative_file_path> | <complete_new_code_contents>
+            - write_draft_file: <filename> | <content> (Use this to create or update draft documents/notes/roadmaps/tasks in docs/drafts/ without sandbox constraints)
+            - read_draft_file: <filename> (Read a draft file from docs/drafts/)
+            - list_draft_files (List all drafts in docs/drafts/)
+            - commit_draft_to_db: <filename> | <doc_title> (Commit local draft to persistent database document)
+            - checkout_db_to_draft: <doc_title> | <filename> (Checkout persistent DB document to local draft)
+            - document_memory: get | <title> (Retrieve persistent DB document)
+            - document_memory: list (List all persistent DB documents)
 
             If you are ready with the final action of this tick, output it exactly in the format:
             PROPOSED_ACTION: <tool_name>:<arguments>
             
             CRITICAL: You must output the raw tool call syntax prefix immediately. Do not describe the tool or use introductory words. For example, output:
-            PROPOSED_ACTION: modify_code: src/main.py | [code contents]
+            PROPOSED_ACTION: execute_code: print("hello")
             """
 
             proposer_resp = sdk['swarm'].query_agent("proposer", proposer_prompt)
@@ -251,6 +282,17 @@ def run_reflection_cycle():
             sdk['logger'].info(f"Updated curiosity vector to: {new_topics}")
         else:
             sdk['logger'].warning(f"Failed to parse curiosity topics from response: '{curiosity_resp}'")
+
+        # V2-T1b (#75): subconscious goal proposal generation, grounded in the
+        # curiosity vector updated above. The propose_goals skill enforces its
+        # own open-proposal cap, so this is a no-op while proposals from earlier
+        # cycles are still awaiting human ratification.
+        try:
+            gp_res = sdk['swarm'].execute_skill("propose_goals", {}, party_id="system")
+            gp_outcome = gp_res.get("result") if gp_res.get("success") else gp_res.get("error")
+            sdk['logger'].info(f"Goal proposal step: {gp_outcome}")
+        except Exception as gpe:
+            sdk['logger'].error(f"Goal proposal generation step failed: {gpe}")
 
         return f"Reflection cycle complete. Action: '{proposed_action}'"
 
