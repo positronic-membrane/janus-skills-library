@@ -137,6 +137,7 @@ Skills can also use the Python standard library and any package installed in Pos
 | `ingest_fact` | Run a candidate fact through the 4-phase epistemic ingestion pipeline |
 | `list_draft_files` | List all draft files in `docs/drafts/` |
 | `manage_sandbox` | Control git worktree sandboxes (start, test, ship, abort, diff) |
+| `neo4j_keepalive` | Daily read-only ping of the Neo4j graph to prevent Aura Free auto-pause |
 | `read_codebase` | Query the codebase index for class structures, methods, and patterns |
 | `read_draft_file` | Read a draft document from `docs/drafts/` |
 | `run_reflection_cycle` | Execute the autonomous multi-agent reflection and debate loop |

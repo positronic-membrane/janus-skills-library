@@ -218,6 +218,18 @@
       "test_file": "skills/test_manage_sandbox.py"
     },
     {
+      "skill_id": "neo4j_keepalive",
+      "name": "Neo4j Keep-Alive",
+      "description": "Daily read-only ping (RETURN 1) against the Neo4j knowledge graph so the Aura Free instance never hits its 3-day auto-pause; no-ops when NEO4J_URI is unset.",
+      "parameters_schema": "{\"type\": \"object\", \"properties\": {}}",
+      "entry_point_function": "neo4j_keepalive",
+      "required_role": "contributor",
+      "trigger_type": "interval",
+      "trigger_config": "{\"interval_seconds\": 86400}",
+      "file": "skills/neo4j_keepalive.py",
+      "test_file": "skills/test_neo4j_keepalive.py"
+    },
+    {
       "skill_id": "read_codebase",
       "name": "Read Codebase",
       "description": "Query the codebase index for relevant class structures, methods, signatures, and functions.",
