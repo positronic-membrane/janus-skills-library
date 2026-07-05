@@ -273,25 +273,23 @@ def run_reflection_cycle():
         curiosity_resp = sdk['swarm'].query_agent("archivist", curiosity_prompt)
         topics_match = re.search(r"\[.*\]", curiosity_resp or "", re.DOTALL)
         new_topics = []
+        parse_failure_reason = None
         if not topics_match:
-            sdk['logger'].warning(f"No JSON array found in curiosity response: '{curiosity_resp}'")
+            parse_failure_reason = f"No JSON array found in curiosity response: '{curiosity_resp}'"
         else:
             try:
                 raw_topics = json.loads(topics_match.group(0))
             except (json.JSONDecodeError, ValueError) as e:
-                sdk['logger'].warning(f"Failed to parse curiosity JSON: {e}. Response: '{curiosity_resp}'")
-                raw_topics = []
-            if not isinstance(raw_topics, list):
-                sdk['logger'].warning(f"Curiosity JSON was not an array: '{curiosity_resp}'")
+                parse_failure_reason = f"Failed to parse curiosity JSON: {e}. Response: '{curiosity_resp}'"
                 raw_topics = []
             seen = set()
             for t in raw_topics:
                 if not isinstance(t, str):
                     continue
-                t = t.strip(" []").strip()[:200]
+                t = re.sub(r"[\[\]]", "", t).strip()
                 if t and t.lower() not in seen:
                     seen.add(t.lower())
-                    new_topics.append(t)
+                    new_topics.append(t[:200])
 
         if new_topics:
             try:
@@ -301,7 +299,9 @@ def run_reflection_cycle():
             sdk['drives'].update_curiosity_vector(new_topics)
             sdk['logger'].info(f"Updated curiosity vector to: {new_topics}")
         else:
-            sdk['logger'].warning(f"No valid curiosity topics parsed from response: '{curiosity_resp}'")
+            sdk['logger'].warning(
+                parse_failure_reason or f"No valid curiosity topics parsed from response: '{curiosity_resp}'"
+            )
 
         # V2-T1b (#75): subconscious goal proposal generation, grounded in the
         # curiosity vector updated above. The propose_goals skill enforces its

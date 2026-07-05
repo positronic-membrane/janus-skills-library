@@ -182,6 +182,17 @@ def test_reflection_cycle_curiosity_strips_stray_brackets():
     assert sdk["drives"].captured[-1] == ["topic-one", "topic-two"]
 
 
+def test_reflection_cycle_curiosity_strips_internal_brackets():
+    """Issue #78 follow-up: a bracket that isn't at the string edge must also be stripped,
+    not just leading/trailing ones (code review caught .strip(" []") missing this)."""
+    sdk = _make_behavior_sdk(
+        curiosity_response='["[RFC 7231] compliance for HTTP caching", "other"]'
+    )
+    mod = _load_skill(sdk)
+    mod.run_reflection_cycle()
+    assert sdk["drives"].captured[-1] == ["RFC 7231 compliance for HTTP caching", "other"]
+
+
 def test_reflection_cycle_curiosity_empty_array_skips_write():
     """Issue #78: an empty/unparseable response must not clobber existing state."""
     sdk = _make_behavior_sdk(curiosity_response="[]")
