@@ -15,7 +15,6 @@ def _make_sdk():
     mock_gh.create_pr.return_value = {"number": 11}
     mock_gh.get_pr.return_value = {"number": 12, "title": "PR"}
     mock_gh.get_pr_diff.return_value = [{"filename": "a.py", "patch": "@@ -1 +1 @@"}]
-    mock_gh.merge_pr.return_value = {"merged": True}
     mock_gh.update_issue.return_value = {"number": 8, "title": "Updated"}
     mock_gh.create_label.return_value = {"name": "triage"}
     return {
@@ -128,27 +127,14 @@ def test_get_pr_diff():
     assert result[0]["filename"] == "a.py"
 
 
-def test_merge_pr_defaults():
+def test_unknown_action_rejects_merge_pr():
+    # merge_pr is deliberately NOT wired into this dispatcher — it must only be
+    # reachable via the main repo's /merge command, never via the autonomous
+    # skill-call loop. See the comment in github_integration.py::run().
     mod = _load_skill()
     result = mod.run(action="merge_pr", repo="owner/repo", number=12)
-    mod.sdk["github"].merge_pr.assert_called_once_with(
-        "owner/repo", 12, merge_method="squash", commit_title=None, commit_message=None
-    )
-    assert result["merged"] is True
-
-
-def test_merge_pr_explicit_commit_message():
-    mod = _load_skill()
-    mod.run(
-        action="merge_pr",
-        repo="owner/repo",
-        number=12,
-        commit_title="Squash: my PR",
-        commit_message="Details here",
-    )
-    mod.sdk["github"].merge_pr.assert_called_once_with(
-        "owner/repo", 12, merge_method="squash", commit_title="Squash: my PR", commit_message="Details here"
-    )
+    assert "error" in result
+    assert "merge_pr" in result["error"]
 
 
 def test_create_repo_private_by_default():

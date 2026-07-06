@@ -31,14 +31,11 @@ def run(action, repo=None, **kwargs):
         return gh.get_pr(repo, kwargs["number"])
     if action == "get_pr_diff":
         return gh.get_pr_diff(repo, kwargs["number"])
-    if action == "merge_pr":
-        return gh.merge_pr(
-            repo,
-            kwargs["number"],
-            merge_method=kwargs.get("merge_method", "squash"),
-            commit_title=kwargs.get("commit_title"),
-            commit_message=kwargs.get("commit_message"),
-        )
+    # Deliberately no "merge_pr" action here: this dispatcher is reachable from
+    # the autonomous persona ReAct loop (the model's own JSON tool-calls), not
+    # just human-typed commands. Merging must only ever happen via the explicit
+    # /merge slash command's verdict + role + --force gate in the main repo —
+    # exposing it here would let the model merge a PR on its own initiative.
     if action == "create_repo":
         return gh.create_repo(
             kwargs["name"], kwargs.get("description", ""), kwargs.get("private", True)
