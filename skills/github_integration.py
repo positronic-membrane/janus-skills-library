@@ -27,6 +27,18 @@ def run(action, repo=None, **kwargs):
         return gh.create_pr(
             repo, kwargs["title"], kwargs.get("body", ""), kwargs["head"], kwargs.get("base", "main")
         )
+    if action == "get_pr":
+        return gh.get_pr(repo, kwargs["number"])
+    if action == "get_pr_diff":
+        return gh.get_pr_diff(repo, kwargs["number"])
+    if action == "merge_pr":
+        return gh.merge_pr(
+            repo,
+            kwargs["number"],
+            merge_method=kwargs.get("merge_method", "squash"),
+            commit_title=kwargs.get("commit_title"),
+            commit_message=kwargs.get("commit_message"),
+        )
     if action == "create_repo":
         return gh.create_repo(
             kwargs["name"], kwargs.get("description", ""), kwargs.get("private", True)
