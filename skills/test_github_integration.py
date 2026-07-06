@@ -13,6 +13,8 @@ def _make_sdk():
     mock_gh.add_comment.return_value = {"id": 99}
     mock_gh.close_issue.return_value = {"state": "closed"}
     mock_gh.create_pr.return_value = {"number": 11}
+    mock_gh.get_pr.return_value = {"number": 12, "title": "PR"}
+    mock_gh.get_pr_diff.return_value = [{"filename": "a.py", "patch": "@@ -1 +1 @@"}]
     mock_gh.update_issue.return_value = {"number": 8, "title": "Updated"}
     mock_gh.create_label.return_value = {"name": "triage"}
     return {
@@ -109,6 +111,30 @@ def test_create_pr():
     result = mod.run(action="create_pr", repo="owner/repo", title="My PR", body="body", head="feature")
     mod.sdk["github"].create_pr.assert_called_once_with("owner/repo", "My PR", "body", "feature", "main")
     assert result["number"] == 11
+
+
+def test_get_pr():
+    mod = _load_skill()
+    result = mod.run(action="get_pr", repo="owner/repo", number=12)
+    mod.sdk["github"].get_pr.assert_called_once_with("owner/repo", 12)
+    assert result["number"] == 12
+
+
+def test_get_pr_diff():
+    mod = _load_skill()
+    result = mod.run(action="get_pr_diff", repo="owner/repo", number=12)
+    mod.sdk["github"].get_pr_diff.assert_called_once_with("owner/repo", 12)
+    assert result[0]["filename"] == "a.py"
+
+
+def test_unknown_action_rejects_merge_pr():
+    # merge_pr is deliberately NOT wired into this dispatcher — it must only be
+    # reachable via the main repo's /merge command, never via the autonomous
+    # skill-call loop. See the comment in github_integration.py::run().
+    mod = _load_skill()
+    result = mod.run(action="merge_pr", repo="owner/repo", number=12)
+    assert "error" in result
+    assert "merge_pr" in result["error"]
 
 
 def test_create_repo_private_by_default():
