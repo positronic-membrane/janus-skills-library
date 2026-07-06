@@ -61,7 +61,7 @@ def test_skill_entry_point_defined():
     assert callable(getattr(mod, "run_reflection_cycle"))
 
 
-def _make_behavior_sdk(propose_raises=False):
+def _make_behavior_sdk(propose_raises=False, curiosity_response='["pgvector recall", "chroma benchmarks"]'):
     """A mock sdk rich enough to drive a full reflection cycle."""
     class MockDB:
         def query(self, sql, params=()):
@@ -82,10 +82,12 @@ def _make_behavior_sdk(propose_raises=False):
             pass
 
     class MockDrives:
+        def __init__(self):
+            self.captured = []
         def get_curiosity_vector(self):
             return []
         def update_curiosity_vector(self, vector):
-            pass
+            self.captured.append(vector)
 
     class MockSwarm:
         def __init__(self):
@@ -95,8 +97,8 @@ def _make_behavior_sdk(propose_raises=False):
                 return "PROPOSED_ACTION: scan_workspace"
             if agent_id == "critic":
                 return "Decision: 1\nJustification: Safe."
-            if "curiosity_topics" in prompt.lower():
-                return "CURIOSITY_TOPICS: pgvector recall, chroma benchmarks"
+            if "curiosity topics" in prompt.lower():
+                return f"CURIOSITY_TOPICS: {curiosity_response}"
             return "Execution summary nugget."
         def get_constitution(self):
             return []
@@ -157,3 +159,44 @@ def test_goal_proposal_failure_does_not_break_reflection():
     mod = _load_skill(sdk)
     result = mod.run_reflection_cycle()
     assert "Reflection cycle complete" in result
+
+
+def test_reflection_cycle_curiosity_topic_with_embedded_comma():
+    """Issue #78: a topic containing an internal comma must survive intact as one element."""
+    sdk = _make_behavior_sdk(
+        curiosity_response='["vector store scaling, sharding strategy", "pgvector recall"]'
+    )
+    mod = _load_skill(sdk)
+    mod.run_reflection_cycle()
+    assert sdk["drives"].captured[-1] == [
+        "vector store scaling, sharding strategy",
+        "pgvector recall",
+    ]
+
+
+def test_reflection_cycle_curiosity_strips_stray_brackets():
+    """Issue #78: stray brackets/whitespace on individual elements are stripped."""
+    sdk = _make_behavior_sdk(curiosity_response='["[topic-one]", " topic-two "]')
+    mod = _load_skill(sdk)
+    mod.run_reflection_cycle()
+    assert sdk["drives"].captured[-1] == ["topic-one", "topic-two"]
+
+
+def test_reflection_cycle_curiosity_strips_internal_brackets():
+    """Issue #78 follow-up: a bracket that isn't at the string edge must also be stripped,
+    not just leading/trailing ones (code review caught .strip(" []") missing this)."""
+    sdk = _make_behavior_sdk(
+        curiosity_response='["[RFC 7231] compliance for HTTP caching", "other"]'
+    )
+    mod = _load_skill(sdk)
+    mod.run_reflection_cycle()
+    assert sdk["drives"].captured[-1] == ["RFC 7231 compliance for HTTP caching", "other"]
+
+
+def test_reflection_cycle_curiosity_empty_array_skips_write():
+    """Issue #78: an empty/unparseable response must not clobber existing state."""
+    sdk = _make_behavior_sdk(curiosity_response="[]")
+    mod = _load_skill(sdk)
+    result = mod.run_reflection_cycle()
+    assert "Reflection cycle complete" in result
+    assert sdk["drives"].captured == []
