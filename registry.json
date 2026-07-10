@@ -1,5 +1,6 @@
 {
   "version": "1.0",
+  "sdk_version": "v1",
   "skills": [
     {
       "skill_id": "echo_message",
