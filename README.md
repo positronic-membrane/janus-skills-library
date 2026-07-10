@@ -12,6 +12,36 @@ Skills are registered in `registry.json` at the repo root. On every Positronic M
 
 ---
 
+## Version lines
+
+This repo has two long-lived branches, mirroring the main repo's successor model
+(`docs/successor_spec.md` there):
+
+| Branch | Purpose | `sdk_version` |
+|---|---|---|
+| `v1` | Frozen to match the `Safe*` SDK wrapper surface of the current, in-production main repo. No new `sdk` capabilities, only bug fixes and new skills built against the existing surface. | `"v1"` |
+| `v2` | Where skill development for the successor instance happens, once its `Safe*` SDK surface diverges from `v1`. | `"v2"` |
+
+Each branch's `registry.json` declares its line in a top-level `"sdk_version"` field.
+Positronic Membrane instances pin to a branch via the `skills.library_ref` `system_config`
+key (default `"v1"`, human-locked) and reject any synced skill whose declared
+`sdk_version` doesn't match their own `SDK_MAJOR_VERSION` constant — at boot-sync time,
+not execution time. A registry with no `sdk_version` field is treated as compatible with
+any instance (legacy/back-compat default), so the field is optional defense-in-depth on
+top of branch isolation, not the only thing enforcing the pin.
+
+**Freeze rules for `v1`:** once a main-repo instance is running against `v1` in
+production, do not add skills to `v1` that call `sdk` capabilities it doesn't yet expose,
+and do not change the meaning/shape of an existing skill's parameters or return value.
+New skills that only use the existing `sdk` surface, and pure bug fixes, are fine.
+Anything that needs a new or changed `Safe*` capability belongs on `v2` instead.
+
+`main` continues to receive general repo maintenance (docs, tooling, CI) and is not
+itself synced by any running instance — `v1`/`v2` are cut from it and are the only
+branches instances actually pin to.
+
+---
+
 ## Adding a new skill
 
 ### 1. Create the skill file
@@ -85,6 +115,11 @@ Add an entry to the `"skills"` array:
 | `trigger_config` | string (JSON) | For `interval` triggers: `{"interval_seconds": 30}`. Empty `{}` for manual. |
 | `file` | string | Path to the skill source file relative to the repo root. |
 | `test_file` | string | Path to the test file relative to the repo root. |
+
+Top-level, alongside `"skills"`: an optional `"sdk_version"` field (e.g. `"v1"`) declares
+which SDK line this branch's registry targets — see [Version lines](#version-lines).
+Individual skill entries may also carry their own `"sdk_version"` override for the rare
+case where a single skill needs to be pinned differently than the rest of the registry.
 
 ---
 
